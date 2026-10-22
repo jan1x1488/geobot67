@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#edf1f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1a22" media="(prefers-color-scheme: dark)">
+<title>Геоигра</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700&family=Noto+Color+Emoji&display=swap">
+<style>
+/* Layout: одна колонка-«атлас», экраны сменяют друг друга; сверху путь выбора (игра → режим → часть света → длина). */
+:root{
+  --bg:#edf1f3; --surface:#ffffff; --fg:#14212b; --muted:#5a6a76; --line:#d3dde2;
+  --accent:#0e7c86; --accent-fg:#ffffff; --accent-soft:#d8eef0;
+  --ok:#157a3c; --ok-soft:#d9f0e1; --bad:#b42318; --bad-soft:#fbe3e0;
+  --display:"Unbounded","Onest",system-ui,sans-serif;
+  --body:"Onest",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --emoji:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1a22; --surface:#16262f; --fg:#e8f0f3; --muted:#93a6b1; --line:#27404c;
+  --accent:#4cc2cb; --accent-fg:#06222a; --accent-soft:#143a42;
+  --ok:#5fd18a; --ok-soft:#14382a; --bad:#ff8a7e; --bad-soft:#40201d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1a22; --surface:#16262f; --fg:#e8f0f3; --muted:#93a6b1; --line:#27404c;
+  --accent:#4cc2cb; --accent-fg:#06222a; --accent-soft:#143a42;
+  --ok:#5fd18a; --ok-soft:#14382a; --bad:#ff8a7e; --bad-soft:#40201d; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--body);
+  padding-top:max(20px,env(safe-area-inset-top,0px));padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+button,input{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.emoji{font-family:var(--emoji)}
+
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-family:var(--display);font-weight:700;font-size:1.05rem;letter-spacing:.02em;background:none;border:0;padding:6px 0;display:flex;align-items:center;gap:10px}
+.brand .emoji{font-size:1.4rem}
+.crumbs{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;min-width:0}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:.82rem;color:var(--muted)}
+
+
+h1,h2{font-family:var(--display);font-weight:700;line-height:1.2;margin:0;text-wrap:balance}
+h1{font-size:clamp(1.6rem,5.5vw,2.4rem)}
+h2{font-size:clamp(1.25rem,4vw,1.6rem)}
+.lead{color:var(--muted);margin:8px 0 0;max-width:52ch}
+.screen{display:flex;flex-direction:column;gap:20px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr))}
+.tile{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;min-width:0;transition:border-color .15s,transform .15s}
+
+.tile .t{font-family:var(--display);font-weight:500;font-size:1.05rem}
+.tile .d{color:var(--muted);font-size:.92rem}
+.tile .big{font-size:3.4rem;line-height:1;font-family:var(--emoji)}
+.tile .sample{font-size:.95rem;background:var(--accent-soft);border-radius:10px;padding:10px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tile .sample b{font-weight:600}
+.minipills{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.minipills span{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:.82rem;text-align:center;color:var(--muted)}
+.minipills span.on{border-color:var(--accent);background:var(--accent-soft);color:var(--fg)}
+.fakeinput{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.92rem;color:var(--muted);border-bottom:2px solid var(--accent)}
+.count{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.85rem}
+.lenrow{display:flex;flex-wrap:wrap;gap:12px}
+.lenrow .tile{flex:1 1 140px;align-items:flex-start}
+.lenrow .num{font-family:var(--display);font-size:2.2rem;font-weight:700;line-height:1}
+.back{align-self:flex-start;background:none;border:0;color:var(--muted);padding:4px 0;font-size:.92rem}
+
+
+/* игра */
+.hud{display:flex;align-items:center;gap:14px}
+.bar{flex:1;height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+.hud .count{white-space:nowrap}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:clamp(18px,4vw,32px);display:flex;flex-direction:column;gap:20px;align-items:center;text-align:center}
+.q-label{color:var(--muted);font-size:.95rem}
+.flagbig{font-family:var(--emoji);font-size:clamp(5rem,26vw,9rem);line-height:1.1}
+.country{font-family:var(--display);font-weight:700;font-size:clamp(1.5rem,6vw,2.2rem);text-wrap:balance}
+.countrywrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.countrywrap .emoji{font-size:3.4rem;line-height:1.1}
+.opts{display:grid;gap:10px;grid-template-columns:1fr 1fr;width:100%}
+@media(max-width:480px){.opts{grid-template-columns:1fr}}
+.opt{background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:14px 12px;font-weight:500;min-width:0;overflow-wrap:anywhere;display:flex;gap:10px;align-items:center;justify-content:center;text-align:center}
+.opt kbd{font:600 .75rem var(--body);color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:0 6px;flex:none}
+
+.opt.right{background:var(--ok-soft);border-color:var(--ok)}
+.opt.wrong{background:var(--bad-soft);border-color:var(--bad)}
+.opt:disabled{cursor:default}
+.typeform{display:flex;gap:10px;width:100%;flex-wrap:wrap}
+.typeform input{flex:1 1 200px;min-width:0;background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:14px;font-size:1.05rem;text-align:center}
+.typeform input:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.btn{background:var(--accent);color:var(--accent-fg);border:0;border-radius:12px;padding:14px 22px;font-weight:600}
+
+.btn.ghost{background:transparent;color:var(--fg);border:1.5px solid var(--line)}
+
+.btnrow{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%}
+#fb{display:flex;flex-direction:column;gap:12px}
+.fb{width:100%;border-radius:12px;padding:12px 14px;font-weight:500;display:flex;flex-direction:column;gap:2px}
+.fb.ok{background:var(--ok-soft);color:var(--ok)}
+.fb.no{background:var(--bad-soft);color:var(--bad)}
+.fb small{font-weight:400;color:var(--fg);opacity:.85}
+.skiprow{display:flex;gap:16px;justify-content:center}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;padding:4px}
+
+/* итог */
+.score{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.score .n{font-family:var(--display);font-size:clamp(2.6rem,12vw,4rem);font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.score .of{color:var(--muted)}
+.review{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.review li{display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:0}
+.review .fl{font-family:var(--emoji);font-size:1.6rem;line-height:1}
+.review .tx{flex:1;min-width:0;overflow-wrap:anywhere}
+.review .tx small{display:block;color:var(--muted)}
+.review .mk{font-weight:700;flex:none}
+.review .ok{color:var(--ok)} .review .no{color:var(--bad)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ───── мобильная версия ───── */
+@media(hover:hover){
+  button.chip:hover{border-color:var(--accent);color:var(--fg)}
+  .tile:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .back:hover{color:var(--fg)}
+  .opt:hover:not(:disabled){border-color:var(--accent)}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.ghost:hover{border-color:var(--accent);filter:none}
+}
+.tile:active,.opt:active:not(:disabled),.btn:active{transform:scale(.98)}
+@media(hover:none){.opt kbd{display:none}}
+@media(pointer:coarse){
+  .brand,.back,.linkbtn{min-height:44px}
+  button.chip{min-height:40px;display:inline-flex;align-items:center;padding-inline:14px}
+  .opt{min-height:54px;font-size:1.02rem}
+  .btn{min-height:50px}
+}
+@media(max-width:600px){
+  body{padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))}
+  .wrap{gap:18px}
+  header.top{flex-direction:column;align-items:stretch;gap:2px}
+  .crumbs:empty{display:none}
+  .crumbs{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;margin-inline:-16px;padding:2px 16px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .crumbs::-webkit-scrollbar{display:none}
+  .chip{flex:none;white-space:nowrap}
+  .tile{padding:14px}
+  .tile .t{overflow-wrap:anywhere}
+  .tile .big{font-size:2.8rem}
+  .grid.cont{grid-template-columns:1fr 1fr}
+  .grid.cont .tile:first-child{grid-column:1/-1}
+  .lenrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr))}
+  .lenrow .tile{padding:14px 12px}
+  .lenrow .num{font-size:1.9rem}
+  .hud{gap:10px}
+  .card{padding:18px;gap:16px;border-radius:16px}
+  .country{overflow-wrap:anywhere}
+  .opts{gap:8px}
+  .typeform .btn{flex:1 1 100%}
+  .btnrow{flex-direction:column}
+  .btnrow .btn{width:100%}
+  /* «Верно/Неверно» и «Дальше» всегда у нижнего края экрана */
+  #fb:empty{display:none}
+  #fb{position:sticky;bottom:0;z-index:5;width:calc(100% + 36px)!important;margin:0 -18px -18px;
+    padding:12px 18px calc(14px + env(safe-area-inset-bottom,0px));background:var(--surface);
+    border-top:1px solid var(--line);border-radius:0 0 15px 15px;box-shadow:0 -10px 14px -10px rgba(0,0,0,.18)}
+}
+@media(max-height:480px) and (orientation:landscape){
+  .flagbig{font-size:4.5rem}
+  .card{gap:12px}
+}
+</style>
+</head><body>
+<div class="wrap">
+  <header class="top">
+    <button class="brand" id="home" type="button" aria-label="На главную"><span class="emoji">🌍</span>Геоигра</button>
+    <nav class="crumbs" id="crumbs" aria-label="Выбранные настройки"></nav>
+  </header>
+  <main id="app" class="screen"></main>
+</div>
+
+<script>
+const DATA = {"continents": {"europe": {"title": "🇪🇺 Европа", "list": [["Австрия", "Вена", "🇦🇹"], ["Албания", "Тирана", "🇦🇱"], ["Андорра", "Андорра-ла-Велья", "🇦🇩"], ["Беларусь", "Минск", "🇧🇾"], ["Бельгия", "Брюссель", "🇧🇪"], ["Болгария", "София", "🇧🇬"], ["Босния и Герцеговина", "Сараево", "🇧🇦"], ["Великобритания", "Лондон", "🇬🇧"], ["Венгрия", "Будапешт", "🇭🇺"], ["Германия", "Берлин", "🇩🇪"], ["Греция", "Афины", "🇬🇷"], ["Дания", "Копенгаген", "🇩🇰"], ["Ирландия", "Дублин", "🇮🇪"], ["Исландия", "Рейкьявик", "🇮🇸"], ["Испания", "Мадрид", "🇪🇸"], ["Италия", "Рим", "🇮🇹"], ["Латвия", "Рига", "🇱🇻"], ["Литва", "Вильнюс", "🇱🇹"], ["Лихтенштейн", "Вадуц", "🇱🇮"], ["Люксембург", "Люксембург", "🇱🇺"], ["Мальта", "Валлетта", "🇲🇹"], ["Молдавия", "Кишинёв", "🇲🇩"], ["Монако", "Монако", "🇲🇨"], ["Нидерланды", "Амстердам", "🇳🇱"], ["Норвегия", "Осло", "🇳🇴"], ["Польша", "Варшава", "🇵🇱"], ["Португалия", "Лиссабон", "🇵🇹"], ["Россия", "Москва", "🇷🇺"], ["Румыния", "Бухарест", "🇷🇴"], ["Сан-Марино", "Сан-Марино", "🇸🇲"], ["Северная Македония", "Скопье", "🇲🇰"], ["Сербия", "Белград", "🇷🇸"], ["Словакия", "Братислава", "🇸🇰"], ["Словения", "Любляна", "🇸🇮"], ["Украина", "Киев", "🇺🇦"], ["Финляндия", "Хельсинки", "🇫🇮"], ["Франция", "Париж", "🇫🇷"], ["Хорватия", "Загреб", "🇭🇷"], ["Черногория", "Подгорица", "🇲🇪"], ["Чехия", "Прага", "🇨🇿"], ["Швейцария", "Берн", "🇨🇭"], ["Швеция", "Стокгольм", "🇸🇪"], ["Эстония", "Таллин", "🇪🇪"], ["Ватикан", "Ватикан", "🇻🇦"], ["Косово", "Приштина", "🇽🇰"]]}, "asia": {"title": "🌏 Азия", "list": [["Азербайджан", "Баку", "🇦🇿"], ["Армения", "Ереван", "🇦🇲"], ["Афганистан", "Кабул", "🇦🇫"], ["Бангладеш", "Дакка", "🇧🇩"], ["Бахрейн", "Манама", "🇧🇭"], ["Бруней", "Бандар-Сери-Бегаван", "🇧🇳"], ["Бутан", "Тхимпху", "🇧🇹"], ["Вьетнам", "Ханой", "🇻🇳"], ["Грузия", "Тбилиси", "🇬🇪"], ["Индия", "Нью-Дели", "🇮🇳"], ["Индонезия", "Джакарта", "🇮🇩"], ["Иордания", "Амман", "🇯🇴"], ["Ирак", "Багдад", "🇮🇶"], ["Иран", "Тегеран", "🇮🇷"], ["Йемен", "Сана", "🇾🇪"], ["Казахстан", "Астана", "🇰🇿"], ["Камбоджа", "Пномпень", "🇰🇭"], ["Катар", "Доха", "🇶🇦"], ["Кипр", "Никосия", "🇨🇾"], ["Киргизия", "Бишкек", "🇰🇬"], ["Китай", "Пекин", "🇨🇳"], ["Кувейт", "Эль-Кувейт", "🇰🇼"], ["Лаос", "Вьентьян", "🇱🇦"], ["Ливан", "Бейрут", "🇱🇧"], ["Малайзия", "Куала-Лумпур", "🇲🇾"], ["Мальдивы", "Мале", "🇲🇻"], ["Монголия", "Улан-Батор", "🇲🇳"], ["Мьянма", "Нейпьидо", "🇲🇲"], ["Непал", "Катманду", "🇳🇵"], ["ОАЭ", "Абу-Даби", "🇦🇪"], ["Оман", "Маскат", "🇴🇲"], ["Пакистан", "Исламабад", "🇵🇰"], ["Саудовская Аравия", "Эр-Рияд", "🇸🇦"], ["Северная Корея", "Пхеньян", "🇰🇵"], ["Сингапур", "Сингапур", "🇸🇬"], ["Сирия", "Дамаск", "🇸🇾"], ["Таджикистан", "Душанбе", "🇹🇯"], ["Таиланд", "Бангкок", "🇹🇭"], ["Туркмения", "Ашхабад", "🇹🇲"], ["Турция", "Анкара", "🇹🇷"], ["Узбекистан", "Ташкент", "🇺🇿"], ["Филиппины", "Манила", "🇵🇭"], ["Шри-Ланка", "Шри-Джаяварденепура-Котте", "🇱🇰"], ["Южная Корея", "Сеул", "🇰🇷"], ["Япония", "Токио", "🇯🇵"], ["Израиль", "Иерусалим", "🇮🇱"], ["Восточный Тимор", "Дили", "🇹🇱"]]}, "africa": {"title": "🌍 Африка", "list": [["Алжир", "Алжир", "🇩🇿"], ["Ангола", "Луанда", "🇦🇴"], ["Ботсвана", "Габороне", "🇧🇼"], ["Габон", "Либревиль", "🇬🇦"], ["Гана", "Аккра", "🇬🇭"], ["Египет", "Каир", "🇪🇬"], ["Замбия", "Лусака", "🇿🇲"], ["Зимбабве", "Хараре", "🇿🇼"], ["Камерун", "Яунде", "🇨🇲"], ["Кения", "Найроби", "🇰🇪"], ["Кот-д’Ивуар", "Ямусукро", "🇨🇮"], ["Ливия", "Триполи", "🇱🇾"], ["Мадагаскар", "Антананариву", "🇲🇬"], ["Мали", "Бамако", "🇲🇱"], ["Марокко", "Рабат", "🇲🇦"], ["Мозамбик", "Мапуту", "🇲🇿"], ["Намибия", "Виндхук", "🇳🇦"], ["Нигер", "Ниамей", "🇳🇪"], ["Нигерия", "Абуджа", "🇳🇬"], ["Руанда", "Кигали", "🇷🇼"], ["Сенегал", "Дакар", "🇸🇳"], ["Сомали", "Могадишо", "🇸🇴"], ["Судан", "Хартум", "🇸🇩"], ["Танзания", "Додома", "🇹🇿"], ["Тунис", "Тунис", "🇹🇳"], ["Уганда", "Кампала", "🇺🇬"], ["ДР Конго", "Киншаса", "🇨🇩"], ["Эритрея", "Асмэра", "🇪🇷"], ["Эфиопия", "Аддис-Абеба", "🇪🇹"], ["ЮАР", "Претория", "🇿🇦"], ["Бенин", "Порто-Ново", "🇧🇯"], ["Буркина-Фасо", "Уагадугу", "🇧🇫"], ["Бурунди", "Гитега", "🇧🇮"], ["Гамбия", "Банжул", "🇬🇲"], ["Гвинея", "Конакри", "🇬🇳"], ["Гвинея-Бисау", "Бисау", "🇬🇼"], ["Джибути", "Джибути", "🇩🇯"], ["Экваториальная Гвинея", "Малабо", "🇬🇶"], ["Эсватини", "Мбабане", "🇸🇿"], ["Кабо-Верде", "Прая", "🇨🇻"], ["Коморы", "Морони", "🇰🇲"], ["Республика Конго", "Браззавиль", "🇨🇬"], ["Лесото", "Масеру", "🇱🇸"], ["Либерия", "Монровия", "🇱🇷"], ["Маврикий", "Порт-Луи", "🇲🇺"], ["Мавритания", "Нуакшот", "🇲🇷"], ["Малави", "Лилонгве", "🇲🇼"], ["Сан-Томе и Принсипи", "Сан-Томе", "🇸🇹"], ["Сейшелы", "Виктория", "🇸🇨"], ["Сьерра-Леоне", "Фритаун", "🇸🇱"], ["Того", "Ломе", "🇹🇬"], ["Чад", "Нджамена", "🇹🇩"], ["ЦАР", "Банги", "🇨🇫"], ["Южный Судан", "Джуба", "🇸🇸"]]}, "namerica": {"title": "🌎 Сев. Америка", "list": [["Багамы", "Нассау", "🇧🇸"], ["Барбадос", "Бриджтаун", "🇧🇧"], ["Белиз", "Бельмопан", "🇧🇿"], ["Гаити", "Порт-о-Пренс", "🇭🇹"], ["Гватемала", "Гватемала", "🇬🇹"], ["Гондурас", "Тегусигальпа", "🇭🇳"], ["Доминиканская Республика", "Санто-Доминго", "🇩🇴"], ["Канада", "Оттава", "🇨🇦"], ["Коста-Рика", "Сан-Хосе", "🇨🇷"], ["Куба", "Гавана", "🇨🇺"], ["Мексика", "Мехико", "🇲🇽"], ["Никарагуа", "Манагуа", "🇳🇮"], ["Панама", "Панама", "🇵🇦"], ["Сальвадор", "Сан-Сальвадор", "🇸🇻"], ["США", "Вашингтон", "🇺🇸"], ["Тринидад и Тобаго", "Порт-оф-Спейн", "🇹🇹"], ["Ямайка", "Кингстон", "🇯🇲"], ["Антигуа и Барбуда", "Сент-Джонс", "🇦🇬"], ["Доминика", "Розо", "🇩🇲"], ["Гренада", "Сент-Джорджес", "🇬🇩"], ["Сент-Китс и Невис", "Бастер", "🇰🇳"], ["Сент-Люсия", "Кастри", "🇱🇨"], ["Сент-Винсент и Гренадины", "Кингстаун", "🇻🇨"]]}, "samerica": {"title": "🌎 Юж. Америка", "list": [["Аргентина", "Буэнос-Айрес", "🇦🇷"], ["Боливия", "Сукре", "🇧🇴"], ["Бразилия", "Бразилиа", "🇧🇷"], ["Венесуэла", "Каракас", "🇻🇪"], ["Гайана", "Джорджтаун", "🇬🇾"], ["Колумбия", "Богота", "🇨🇴"], ["Парагвай", "Асунсьон", "🇵🇾"], ["Перу", "Лима", "🇵🇪"], ["Суринам", "Парамарибо", "🇸🇷"], ["Уругвай", "Монтевидео", "🇺🇾"], ["Чили", "Сантьяго", "🇨🇱"], ["Эквадор", "Кито", "🇪🇨"]]}, "oceania": {"title": "🏝 Океания", "list": [["Австралия", "Канберра", "🇦🇺"], ["Вануату", "Порт-Вила", "🇻🇺"], ["Кирибати", "Тарава", "🇰🇮"], ["Маршалловы Острова", "Маджуро", "🇲🇭"], ["Микронезия", "Паликир", "🇫🇲"], ["Науру", "Ярен", "🇳🇷"], ["Новая Зеландия", "Веллингтон", "🇳🇿"], ["Палау", "Нгерулмуд", "🇵🇼"], ["Папуа — Новая Гвинея", "Порт-Морсби", "🇵🇬"], ["Самоа", "Апиа", "🇼🇸"], ["Соломоновы Острова", "Хониара", "🇸🇧"], ["Тонга", "Нукуалофа", "🇹🇴"], ["Тувалу", "Фунафути", "🇹🇻"], ["Фиджи", "Сува", "🇫🇯"]]}, "world": {"title": "🌐 Весь мир", "list": [["Австрия", "Вена", "🇦🇹"], ["Албания", "Тирана", "🇦🇱"], ["Андорра", "Андорра-ла-Велья", "🇦🇩"], ["Беларусь", "Минск", "🇧🇾"], ["Бельгия", "Брюссель", "🇧🇪"], ["Болгария", "София", "🇧🇬"], ["Босния и Герцеговина", "Сараево", "🇧🇦"], ["Великобритания", "Лондон", "🇬🇧"], ["Венгрия", "Будапешт", "🇭🇺"], ["Германия", "Берлин", "🇩🇪"], ["Греция", "Афины", "🇬🇷"], ["Дания", "Копенгаген", "🇩🇰"], ["Ирландия", "Дублин", "🇮🇪"], ["Исландия", "Рейкьявик", "🇮🇸"], ["Испания", "Мадрид", "🇪🇸"], ["Италия", "Рим", "🇮🇹"], ["Латвия", "Рига", "🇱🇻"], ["Литва", "Вильнюс", "🇱🇹"], ["Лихтенштейн", "Вадуц", "🇱🇮"], ["Люксембург", "Люксембург", "🇱🇺"], ["Мальта", "Валлетта", "🇲🇹"], ["Молдавия", "Кишинёв", "🇲🇩"], ["Монако", "Монако", "🇲🇨"], ["Нидерланды", "Амстердам", "🇳🇱"], ["Норвегия", "Осло", "🇳🇴"], ["Польша", "Варшава", "🇵🇱"], ["Португалия", "Лиссабон", "🇵🇹"], ["Россия", "Москва", "🇷🇺"], ["Румыния", "Бухарест", "🇷🇴"], ["Сан-Марино", "Сан-Марино", "🇸🇲"], ["Северная Македония", "Скопье", "🇲🇰"], ["Сербия", "Белград", "🇷🇸"], ["Словакия", "Братислава", "🇸🇰"], ["Словения", "Любляна", "🇸🇮"], ["Украина", "Киев", "🇺🇦"], ["Финляндия", "Хельсинки", "🇫🇮"], ["Франция", "Париж", "🇫🇷"], ["Хорватия", "Загреб", "🇭🇷"], ["Черногория", "Подгорица", "🇲🇪"], ["Чехия", "Прага", "🇨🇿"], ["Швейцария", "Берн", "🇨🇭"], ["Швеция", "Стокгольм", "🇸🇪"], ["Эстония", "Таллин", "🇪🇪"], ["Ватикан", "Ватикан", "🇻🇦"], ["Косово", "Приштина", "🇽🇰"], ["Азербайджан", "Баку", "🇦🇿"], ["Армения", "Ереван", "🇦🇲"], ["Афганистан", "Кабул", "🇦🇫"], ["Бангладеш", "Дакка", "🇧🇩"], ["Бахрейн", "Манама", "🇧🇭"], ["Бруней", "Бандар-Сери-Бегаван", "🇧🇳"], ["Бутан", "Тхимпху", "🇧🇹"], ["Вьетнам", "Ханой", "🇻🇳"], ["Грузия", "Тбилиси", "🇬🇪"], ["Индия", "Нью-Дели", "🇮🇳"], ["Индонезия", "Джакарта", "🇮🇩"], ["Иордания", "Амман", "🇯🇴"], ["Ирак", "Багдад", "🇮🇶"], ["Иран", "Тегеран", "🇮🇷"], ["Йемен", "Сана", "🇾🇪"], ["Казахстан", "Астана", "🇰🇿"], ["Камбоджа", "Пномпень", "🇰🇭"], ["Катар", "Доха", "🇶🇦"], ["Кипр", "Никосия", "🇨🇾"], ["Киргизия", "Бишкек", "🇰🇬"], ["Китай", "Пекин", "🇨🇳"], ["Кувейт", "Эль-Кувейт", "🇰🇼"], ["Лаос", "Вьентьян", "🇱🇦"], ["Ливан", "Бейрут", "🇱🇧"], ["Малайзия", "Куала-Лумпур", "🇲🇾"], ["Мальдивы", "Мале", "🇲🇻"], ["Монголия", "Улан-Батор", "🇲🇳"], ["Мьянма", "Нейпьидо", "🇲🇲"], ["Непал", "Катманду", "🇳🇵"], ["ОАЭ", "Абу-Даби", "🇦🇪"], ["Оман", "Маскат", "🇴🇲"], ["Пакистан", "Исламабад", "🇵🇰"], ["Саудовская Аравия", "Эр-Рияд", "🇸🇦"], ["Северная Корея", "Пхеньян", "🇰🇵"], ["Сингапур", "Сингапур", "🇸🇬"], ["Сирия", "Дамаск", "🇸🇾"], ["Таджикистан", "Душанбе", "🇹🇯"], ["Таиланд", "Бангкок", "🇹🇭"], ["Туркмения", "Ашхабад", "🇹🇲"], ["Турция", "Анкара", "🇹🇷"], ["Узбекистан", "Ташкент", "🇺🇿"], ["Филиппины", "Манила", "🇵🇭"], ["Шри-Ланка", "Шри-Джаяварденепура-Котте", "🇱🇰"], ["Южная Корея", "Сеул", "🇰🇷"], ["Япония", "Токио", "🇯🇵"], ["Израиль", "Иерусалим", "🇮🇱"], ["Восточный Тимор", "Дили", "🇹🇱"], ["Алжир", "Алжир", "🇩🇿"], ["Ангола", "Луанда", "🇦🇴"], ["Ботсвана", "Габороне", "🇧🇼"], ["Габон", "Либревиль", "🇬🇦"], ["Гана", "Аккра", "🇬🇭"], ["Египет", "Каир", "🇪🇬"], ["Замбия", "Лусака", "🇿🇲"], ["Зимбабве", "Хараре", "🇿🇼"], ["Камерун", "Яунде", "🇨🇲"], ["Кения", "Найроби", "🇰🇪"], ["Кот-д’Ивуар", "Ямусукро", "🇨🇮"], ["Ливия", "Триполи", "🇱🇾"], ["Мадагаскар", "Антананариву", "🇲🇬"], ["Мали", "Бамако", "🇲🇱"], ["Марокко", "Рабат", "🇲🇦"], ["Мозамбик", "Мапуту", "🇲🇿"], ["Намибия", "Виндхук", "🇳🇦"], ["Нигер", "Ниамей", "🇳🇪"], ["Нигерия", "Абуджа", "🇳🇬"], ["Руанда", "Кигали", "🇷🇼"], ["Сенегал", "Дакар", "🇸🇳"], ["Сомали", "Могадишо", "🇸🇴"], ["Судан", "Хартум", "🇸🇩"], ["Танзания", "Додома", "🇹🇿"], ["Тунис", "Тунис", "🇹🇳"], ["Уганда", "Кампала", "🇺🇬"], ["ДР Конго", "Киншаса", "🇨🇩"], ["Эритрея", "Асмэра", "🇪🇷"], ["Эфиопия", "Аддис-Абеба", "🇪🇹"], ["ЮАР", "Претория", "🇿🇦"], ["Бенин", "Порто-Ново", "🇧🇯"], ["Буркина-Фасо", "Уагадугу", "🇧🇫"], ["Бурунди", "Гитега", "🇧🇮"], ["Гамбия", "Банжул", "🇬🇲"], ["Гвинея", "Конакри", "🇬🇳"], ["Гвинея-Бисау", "Бисау", "🇬🇼"], ["Джибути", "Джибути", "🇩🇯"], ["Экваториальная Гвинея", "Малабо", "🇬🇶"], ["Эсватини", "Мбабане", "🇸🇿"], ["Кабо-Верде", "Прая", "🇨🇻"], ["Коморы", "Морони", "🇰🇲"], ["Республика Конго", "Браззавиль", "🇨🇬"], ["Лесото", "Масеру", "🇱🇸"], ["Либерия", "Монровия", "🇱🇷"], ["Маврикий", "Порт-Луи", "🇲🇺"], ["Мавритания", "Нуакшот", "🇲🇷"], ["Малави", "Лилонгве", "🇲🇼"], ["Сан-Томе и Принсипи", "Сан-Томе", "🇸🇹"], ["Сейшелы", "Виктория", "🇸🇨"], ["Сьерра-Леоне", "Фритаун", "🇸🇱"], ["Того", "Ломе", "🇹🇬"], ["Чад", "Нджамена", "🇹🇩"], ["ЦАР", "Банги", "🇨🇫"], ["Южный Судан", "Джуба", "🇸🇸"], ["Багамы", "Нассау", "🇧🇸"], ["Барбадос", "Бриджтаун", "🇧🇧"], ["Белиз", "Бельмопан", "🇧🇿"], ["Гаити", "Порт-о-Пренс", "🇭🇹"], ["Гватемала", "Гватемала", "🇬🇹"], ["Гондурас", "Тегусигальпа", "🇭🇳"], ["Доминиканская Республика", "Санто-Доминго", "🇩🇴"], ["Канада", "Оттава", "🇨🇦"], ["Коста-Рика", "Сан-Хосе", "🇨🇷"], ["Куба", "Гавана", "🇨🇺"], ["Мексика", "Мехико", "🇲🇽"], ["Никарагуа", "Манагуа", "🇳🇮"], ["Панама", "Панама", "🇵🇦"], ["Сальвадор", "Сан-Сальвадор", "🇸🇻"], ["США", "Вашингтон", "🇺🇸"], ["Тринидад и Тобаго", "Порт-оф-Спейн", "🇹🇹"], ["Ямайка", "Кингстон", "🇯🇲"], ["Антигуа и Барбуда", "Сент-Джонс", "🇦🇬"], ["Доминика", "Розо", "🇩🇲"], ["Гренада", "Сент-Джорджес", "🇬🇩"], ["Сент-Китс и Невис", "Бастер", "🇰🇳"], ["Сент-Люсия", "Кастри", "🇱🇨"], ["Сент-Винсент и Гренадины", "Кингстаун", "🇻🇨"], ["Аргентина", "Буэнос-Айрес", "🇦🇷"], ["Боливия", "Сукре", "🇧🇴"], ["Бразилия", "Бразилиа", "🇧🇷"], ["Венесуэла", "Каракас", "🇻🇪"], ["Гайана", "Джорджтаун", "🇬🇾"], ["Колумбия", "Богота", "🇨🇴"], ["Парагвай", "Асунсьон", "🇵🇾"], ["Перу", "Лима", "🇵🇪"], ["Суринам", "Парамарибо", "🇸🇷"], ["Уругвай", "Монтевидео", "🇺🇾"], ["Чили", "Сантьяго", "🇨🇱"], ["Эквадор", "Кито", "🇪🇨"], ["Австралия", "Канберра", "🇦🇺"], ["Вануату", "Порт-Вила", "🇻🇺"], ["Кирибати", "Тарава", "🇰🇮"], ["Маршалловы Острова", "Маджуро", "🇲🇭"], ["Микронезия", "Паликир", "🇫🇲"], ["Науру", "Ярен", "🇳🇷"], ["Новая Зеландия", "Веллингтон", "🇳🇿"], ["Палау", "Нгерулмуд", "🇵🇼"], ["Папуа — Новая Гвинея", "Порт-Морсби", "🇵🇬"], ["Самоа", "Апиа", "🇼🇸"], ["Соломоновы Острова", "Хониара", "🇸🇧"], ["Тонга", "Нукуалофа", "🇹🇴"], ["Тувалу", "Фунафути", "🇹🇻"], ["Фиджи", "Сува", "🇫🇯"]]}}, "confused": {"Австралия": ["Сидней", "Мельбурн"], "Новая Зеландия": ["Окленд"], "Канада": ["Торонто", "Монреаль", "Ванкувер"], "США": ["Нью-Йорк", "Лос-Анджелес", "Чикаго"], "Бразилия": ["Рио-де-Жанейро", "Сан-Паулу"], "Турция": ["Стамбул", "Измир"], "Швейцария": ["Цюрих", "Женева"], "Нидерланды": ["Роттердам", "Гаага"], "Марокко": ["Касабланка", "Марракеш"], "ЮАР": ["Кейптаун", "Йоханнесбург"], "Индия": ["Мумбаи", "Калькутта"], "Китай": ["Шанхай", "Гонконг"], "Япония": ["Осака", "Киото"], "Пакистан": ["Карачи", "Лахор"], "Нигерия": ["Лагос"], "Танзания": ["Дар-эс-Салам"], "Мьянма": ["Янгон"], "Казахстан": ["Алма-Ата"], "Боливия": ["Ла-Пас"], "Германия": ["Мюнхен", "Франкфурт", "Гамбург"], "Италия": ["Милан", "Венеция"], "Испания": ["Барселона", "Валенсия"], "Франция": ["Лион", "Марсель"], "Польша": ["Краков"], "Чехия": ["Брно"], "Россия": ["Санкт-Петербург"], "Украина": ["Одесса", "Харьков", "Львов"], "Вьетнам": ["Хошимин"], "Индонезия": ["Сурабая", "Бандунг"], "Египет": ["Александрия"], "Ливия": ["Бенгази"], "Камерун": ["Дуала"], "Кот-д’Ивуар": ["Абиджан"], "Эквадор": ["Гуаякиль"], "Колумбия": ["Медельин"], "Аргентина": ["Кордова", "Росарио"], "Чили": ["Вальпараисо"], "Перу": ["Куско"], "Мексика": ["Гвадалахара", "Канкун"], "Кения": ["Момбаса"], "Южная Корея": ["Пусан"], "Шри-Ланка": ["Коломбо"], "Бельгия": ["Антверпен", "Брюгге"], "Швеция": ["Гётеборг"], "Норвегия": ["Берген"], "Дания": ["Орхус"], "Португалия": ["Порту"], "Греция": ["Салоники"], "Хорватия": ["Сплит"], "Румыния": ["Клуж-Напока"], "Австрия": ["Зальцбург"], "Великобритания": ["Манчестер", "Эдинбург"], "Ирландия": ["Корк"], "Грузия": ["Батуми"], "Узбекистан": ["Самарканд"], "Саудовская Аравия": ["Джидда", "Мекка"], "ОАЭ": ["Дубай"], "Иран": ["Исфахан"], "Ирак": ["Басра"], "Сирия": ["Алеппо"], "Филиппины": ["Давао"], "Таиланд": ["Пхукет", "Чиангмай"], "Камбоджа": ["Сиемреап"], "Гана": ["Кумаси"], "Зимбабве": ["Булавайо"], "Уганда": ["Энтеббе"], "Алжир": ["Оран"], "Панама": ["Колон"], "Гватемала": ["Антигуа"], "Доминиканская Республика": ["Пунта-Кана"], "Малайзия": ["Джорджтаун"], "Израиль": ["Тель-Авив", "Хайфа"], "Бенин": ["Котону"], "Малави": ["Блантайр"], "Бурунди": ["Бужумбура"], "Республика Конго": ["Пуэнт-Нуар"], "Гренада": ["Сент-Джонс"], "Сент-Люсия": ["Кастри-Бей"]}, "similar": [["Румыния", "Андорра", "Молдавия"], ["Индонезия", "Монако", "Польша"], ["Ирландия", "Италия", "Кот-д’Ивуар", "Мексика"], ["Австралия", "Новая Зеландия", "Тувалу", "Фиджи"], ["Нидерланды", "Люксембург", "Россия"], ["Россия", "Словакия", "Словения", "Сербия", "Хорватия"], ["Венесуэла", "Колумбия", "Эквадор"], ["Мали", "Сенегал", "Гана", "Камерун"], ["Швеция", "Финляндия", "Норвегия", "Дания", "Исландия"], ["Бельгия", "Германия", "Уганда"], ["Сальвадор", "Никарагуа", "Гондурас"], ["США", "Малайзия"], ["Бангладеш", "Япония", "Палау"], ["Йемен", "Сирия", "Ирак", "Египет", "Судан"], ["Таиланд", "Коста-Рика"], ["Чад", "Румыния", "Андорра", "Молдавия"], ["Гвинея", "Мали", "Сенегал", "Камерун"], ["Гвинея-Бисау", "Того", "Гана", "Бенин"], ["Судан", "Южный Судан", "Кувейт", "Иордания"], ["Сент-Винсент и Гренадины", "Гренада", "Доминика"]], "alias": {"Чехия": ["Чешская Республика"], "Молдавия": ["Молдова"], "Беларусь": ["Белоруссия"], "Северная Македония": ["Македония"], "США": ["Соединённые Штаты Америки", "Соединённые Штаты", "Америка"], "Великобритания": ["Англия", "Британия", "Соединённое Королевство"], "Эсватини": ["Свазиленд"], "Кот-д’Ивуар": ["Берег Слоновой Кости", "Кот д Ивуар"], "ДР Конго": ["Демократическая Республика Конго", "Конго-Киншаса"], "Республика Конго": ["Конго", "Конго-Браззавиль"], "ЦАР": ["Центральноафриканская Республика"], "ОАЭ": ["Объединённые Арабские Эмираты", "Эмираты"], "Мьянма": ["Бирма"], "Восточный Тимор": ["Тимор-Лесте"], "Ватикан": ["Святой Престол"], "Папуа — Новая Гвинея": ["Папуа Новая Гвинея"], "Россия": ["РФ"], "Босния и Герцеговина": ["Босния"], "Тринидад и Тобаго": ["Тринидад"], "Антигуа и Барбуда": ["Антигуа"], "Сент-Китс и Невис": ["Сент-Китс"], "Сент-Винсент и Гренадины": ["Сент-Винсент"], "Доминиканская Республика": ["Доминикана"], "Багамы": ["Багамские Острова"], "Сан-Томе и Принсипи": ["Сан-Томе"], "Микронезия": ["Федеративные Штаты Микронезии"], "Южная Корея": ["Республика Корея"], "Северная Корея": ["КНДР"]}, "capalias": {"Нейпьидо": ["Нейпидо", "Нэйпьидо"]}};
+const $ = s => document.querySelector(s);
+const app = $('#app'), crumbs = $('#crumbs');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const GAMES = { flags:'Флаги', capitals:'Столицы' };
+const MODES = { choice:'Выбор ответа', typing:'Ручной ввод' };
+const CONT_ORDER = ['world','europe','asia','africa','namerica','samerica','oceania'];
+const CONT_NAME = { world:'Весь мир', europe:'Европа', asia:'Азия', africa:'Африка', namerica:'Северная Америка', samerica:'Южная Америка', oceania:'Океания' };
+const IDENTICAL = [['Индонезия','Монако'],['Чад','Румыния']];
+const OPTIONS = 4;
+
+let S = { game:null, mode:null, cont:null, len:null, run:null };
+
+/* ───── хранилище рекордов (не критично, если недоступно) ───── */
+function bestKey(){ return `geo:${S.game}:${S.mode}:${S.cont}:${S.len}`; }
+function getBest(){ try{ return JSON.parse(localStorage.getItem(bestKey())||'null'); }catch(e){ return null; } }
+function setBest(v){ try{ localStorage.setItem(bestKey(), JSON.stringify(v)); }catch(e){} }
+
+/* ───── вспомогательное ───── */
+const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+const norm = s => String(s).toLowerCase().replace(/ё/g,'е').replace(/й/g,'и').replace(/[^a-zа-я0-9]/g,'');
+function lev(a,b){
+  const m=a.length,n=b.length; if(Math.abs(m-n)>2) return 9;
+  let prev=Array.from({length:n+1},(_,i)=>i);
+  for(let i=1;i<=m;i++){ const cur=[i]; for(let j=1;j<=n;j++) cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1)); prev=cur; }
+  return prev[n];
+}
+function goodAnswers(q){
+  const [name,cap] = q;
+  if(S.game==='capitals') return [cap, ...(DATA.capalias[cap]||[])];
+  return [name, ...(DATA.alias[name]||[])];
+}
+/* возвращает 'exact' | 'close' | 'no' */
+function judge(input, q){
+  const x = norm(input); if(!x) return 'no';
+  let close = false;
+  for(const g of goodAnswers(q)){
+    const y = norm(g);
+    if(x===y) return 'exact';
+    const tol = y.length>=9 ? 2 : y.length>=5 ? 1 : 0;
+    if(tol && lev(x,y)<=tol) close = true;
+  }
+  return close ? 'close' : 'no';
+}
+function pickWrong(q, pool){
+  const [name,cap] = q;
+  const caps = S.game==='capitals';
+  const names = new Set(pool.map(c=>c[0]));
+  const banned = new Set(IDENTICAL.filter(g=>g.includes(name)).flat().filter(n=>n!==name));
+  const answer = caps ? cap : name;
+  let tricky = caps ? (DATA.confused[name]||[]).slice()
+    : DATA.similar.filter(g=>g.includes(name)).flat().filter(n=>n!==name && names.has(n) && !banned.has(n));
+  tricky = shuffle(tricky);
+  const out = [];
+  for(const t of tricky){ if(out.length>=2) break; if(t!==answer && !out.includes(t)) out.push(t); }
+  const others = shuffle(pool.filter(c=>c[0]!==name && (caps || !banned.has(c[0]))).map(c=>caps?c[1]:c[0]));
+  for(const o of others){ if(out.length>=OPTIONS-1) break; if(o!==answer && !out.includes(o)) out.push(o); }
+  return out;
+}
+
+/* ───── путь выбора ───── */
+function renderCrumbs(){
+  const items = [];
+  if(S.game) items.push(['game', GAMES[S.game]]);
+  if(S.mode) items.push(['mode', MODES[S.mode]]);
+  if(S.cont) items.push(['cont', CONT_NAME[S.cont]]);
+  if(S.len)  items.push(['len', S.len==='all' ? 'Все страны' : S.len+' вопросов']);
+  const playing = !!S.run;
+  crumbs.innerHTML = items.map(([k,t]) => playing
+    ? `<span class="chip">${esc(t)}</span>`
+    : `<button type="button" class="chip" data-reset="${k}" title="Изменить">${esc(t)}</button>`).join('');
+}
+crumbs.addEventListener('click', e => {
+  const b = e.target.closest('[data-reset]'); if(!b) return;
+  const k = b.dataset.reset;
+  if(k==='game'){ S.game=S.mode=S.cont=S.len=null; }
+  if(k==='mode'){ S.mode=S.cont=S.len=null; }
+  if(k==='cont'){ S.cont=S.len=null; }
+  if(k==='len'){ S.len=null; }
+  route();
+});
+$('#home').addEventListener('click', () => { S = {game:null,mode:null,cont:null,len:null,run:null}; route(); });
+
+/* ───── экраны выбора ───── */
+function route(){
+  if(!S.run){ S.run=null; }
+  renderCrumbs();
+  if(S.run) return renderQuestion();
+  if(!S.game) return screenGame();
+  if(!S.mode) return screenMode();
+  if(!S.cont) return screenCont();
+  if(!S.len)  return screenLen();
+}
+function backBtn(label, fn){
+  const b = document.createElement('button');
+  b.type='button'; b.className='back'; b.textContent='← '+label; b.onclick=fn; return b;
+}
+function screenGame(){
+  app.innerHTML = `
+    <div><h1>Что угадываем?</h1><p class="lead">Географическая игра по странам мира. Выбери тему, режим и часть света.</p></div>
+    <div class="grid">
+      <button class="tile" type="button" data-v="flags">
+        <span class="big">🇯🇵</span><span class="t">Флаги</span>
+        <span class="d">Видишь флаг, называешь страну.</span>
+        <span class="sample">🇧🇷 → <b>Бразилия</b></span>
+      </button>
+      <button class="tile" type="button" data-v="capitals">
+        <span class="big">🏛️</span><span class="t">Столицы</span>
+        <span class="d">Видишь страну, называешь столицу.</span>
+        <span class="sample"><span class="emoji">🇦🇺</span> Австралия → <b>Канберра</b></span>
+      </button>
+    </div>`;
+  app.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { S.game=b.dataset.v; route(); });
+}
+function screenMode(){
+  app.innerHTML = `<div></div>
+    <div><h2>Как отвечать?</h2></div>
+    <div class="grid">
+      <button class="tile" type="button" data-v="choice">
+        <span class="t">Выбор ответа</span><span class="d">Четыре варианта, среди них похожие на правильный.</span>
+        <div class="minipills"><span>Вена</span><span class="on">Берн</span><span>Цюрих</span><span>Женева</span></div>
+      </button>
+      <button class="tile" type="button" data-v="typing">
+        <span class="t">Ручной ввод</span><span class="d">Пишешь ответ сам. Небольшие опечатки и «ё/е» прощаются.</span>
+        <div class="fakeinput">Введи ответ…</div>
+      </button>
+    </div>`;
+  app.firstElementChild.replaceWith(backBtn('Назад', () => { S.game=null; route(); }));
+  app.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { S.mode=b.dataset.v; route(); });
+}
+function screenCont(){
+  const tiles = CONT_ORDER.map(k => {
+    const n = DATA.continents[k].list.length;
+    return `<button class="tile" type="button" data-v="${k}"><span class="t">${CONT_NAME[k]}</span><span class="count">${n} ${plural(n,'страна','страны','стран')}</span></button>`;
+  }).join('');
+  app.innerHTML = `<div></div><h2>Часть света</h2><div class="grid cont">${tiles}</div>`;
+  app.firstElementChild.replaceWith(backBtn('Назад', () => { S.mode=null; route(); }));
+  app.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { S.cont=b.dataset.v; route(); });
+}
+function screenLen(){
+  const total = DATA.continents[S.cont].list.length;
+  const opts = [10,20].filter(n => n < total);
+  const cells = opts.map(n => `<button class="tile" type="button" data-v="${n}"><span class="num">${n}</span><span class="d">вопросов</span></button>`).join('')
+    + `<button class="tile" type="button" data-v="all"><span class="num">${total}</span><span class="d">все страны</span></button>`;
+  app.innerHTML = `<div></div><h2>Сколько вопросов?</h2><div class="lenrow">${cells}</div>`;
+  app.firstElementChild.replaceWith(backBtn('Назад', () => { S.cont=null; route(); }));
+  app.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { S.len=b.dataset.v; startGame(); });
+}
+function plural(n,a,b,c){ const m=n%100, d=n%10; return (m>10&&m<20)?c : d===1?a : (d>1&&d<5)?b : c; }
+
+/* ───── игра ───── */
+function startGame(){
+  const pool = DATA.continents[S.cont].list;
+  const n = S.len==='all' ? pool.length : Math.min(+S.len, pool.length);
+  S.run = { queue: shuffle(pool).slice(0,n), i:0, score:0, history:[], answered:false, opts:[], correct:-1 };
+  prepare();
+  route();
+}
+function prepare(){
+  const r = S.run, q = r.queue[r.i];
+  r.answered = false;
+  if(S.mode==='choice'){
+    const pool = DATA.continents[S.cont].list;
+    const ans = S.game==='capitals' ? q[1] : q[0];
+    r.opts = shuffle([ans, ...pickWrong(q, pool)]);
+    r.correct = r.opts.indexOf(ans);
+  }
+}
+function questionHead(q){
+  return S.game==='flags'
+    ? `<div class="q-label">Какой стране принадлежит этот флаг?</div><div class="flagbig" role="img" aria-label="Флаг">${q[2]}</div>`
+    : `<div class="q-label">Какая столица у страны</div><div class="countrywrap"><span class="emoji">${q[2]}</span><span class="country">${esc(q[0])}</span></div>`;
+}
+function renderQuestion(){
+  const r = S.run, q = r.queue[r.i], total = r.queue.length;
+  app.innerHTML = `
+    <div class="hud"><button type="button" class="back" id="quit">Закончить</button>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${r.i}"><i style="width:${r.i/total*100}%"></i></div>
+      <span class="count">${r.i+1} / ${total} · верно ${r.score}</span></div>
+    <div class="card" id="card">${questionHead(q)}<div id="ans" style="width:100%;display:flex;flex-direction:column;gap:14px;align-items:center"></div><div id="fb" style="width:100%" aria-live="polite"></div></div>`;
+  $('#quit').onclick = () => finish(true);
+  const ans = $('#ans');
+  if(S.mode==='choice'){
+    ans.innerHTML = `<div class="opts">${r.opts.map((o,i)=>`<button type="button" class="opt" data-i="${i}"><kbd>${i+1}</kbd><span>${esc(o)}</span></button>`).join('')}</div>`;
+    ans.querySelectorAll('.opt').forEach(b => b.onclick = () => answerChoice(+b.dataset.i));
+  } else {
+    ans.innerHTML = `<form class="typeform" id="tf" autocomplete="off"><input id="inp" type="text" placeholder="${S.game==='capitals'?'Введи столицу':'Введи страну'}" autocapitalize="sentences" autocorrect="off" enterkeyhint="done" spellcheck="false" aria-label="Ответ"><button class="btn" type="submit">Ответить</button></form>
+      <div class="skiprow"><button type="button" class="linkbtn" id="skip">Не знаю</button></div>`;
+    $('#tf').onsubmit = e => { e.preventDefault(); answerTyped($('#inp').value); };
+    $('#skip').onclick = () => answerTyped('');
+    $('#inp').focus({preventScroll:true});
+  }
+}
+function record(q, shown, ok){
+  const r = S.run;
+  r.history.push({q, shown, ok});
+  if(ok) r.score++;
+}
+function nextBtn(){
+  const r = S.run, last = r.i+1>=r.queue.length;
+  return `<div class="btnrow"><button type="button" class="btn" id="next">${last?'Результат':'Дальше'}</button></div>`;
+}
+function bindNext(){
+  const b = $('#next'); b.onclick = goNext; b.focus({preventScroll:true});
+}
+function goNext(){
+  const r = S.run; r.i++;
+  if(r.i>=r.queue.length) return finish(false);
+  prepare(); renderQuestion();
+}
+function answerChoice(i){
+  const r = S.run; if(r.answered) return; r.answered = true;
+  const q = r.queue[r.i], ok = i===r.correct;
+  record(q, r.opts[i], ok);
+  document.querySelectorAll('.opt').forEach((b,k) => { b.disabled=true; if(k===r.correct) b.classList.add('right'); else if(k===i) b.classList.add('wrong'); });
+  $('#fb').innerHTML = (ok ? `<div class="fb ok">Верно!</div>` : `<div class="fb no">Неверно<small>Правильный ответ: ${esc(r.opts[r.correct])}</small></div>`) + nextBtn();
+  bindNext();
+}
+function answerTyped(val){
+  const r = S.run; if(r.answered) return; r.answered = true;
+  const q = r.queue[r.i], right = S.game==='capitals' ? q[1] : q[0];
+  const j = val.trim() ? judge(val, q) : 'no';
+  const ok = j!=='no';
+  record(q, val.trim() || '—', ok);
+  $('#ans').innerHTML = '';
+  const fb = $('#fb');
+  fb.innerHTML = (j==='exact' ? `<div class="fb ok">Верно!</div>`
+    : j==='close' ? `<div class="fb ok">Засчитано, есть опечатка<small>Правильно: ${esc(right)}</small></div>`
+    : `<div class="fb no">${val.trim()?'Неверно':'Пропущено'}<small>Правильный ответ: ${esc(right)}</small></div>`) + nextBtn();
+  bindNext();
+}
+document.addEventListener('keydown', e => {
+  if(!S.run || S.mode!=='choice' || e.ctrlKey || e.metaKey || e.altKey) return;
+  const r = S.run;
+  if(!r.answered && /^[1-9]$/.test(e.key) && +e.key<=r.opts.length) answerChoice(+e.key-1);
+  else if(r.answered && e.key==='Enter'){ const n=$('#next'); if(n && document.activeElement!==n) goNext(); }
+});
+
+/* ───── итог ───── */
+function finish(aborted){
+  const r = S.run, done = r.history.length;
+  if(aborted && done===0){ S.run=null; S.len=null; return route(); }
+  S.run = null; renderCrumbs();
+  const ratio = done ? r.score/done : 0;
+  const grade = ratio===1 ? 'Без единой ошибки.' : ratio>=.8 ? 'Отличный результат.' : ratio>=.5 ? 'Неплохо, есть куда расти.' : 'Стоит повторить, и всё получится.';
+  const prev = getBest();
+  let bestLine = '';
+  if(!aborted && done){
+    const pct = Math.round(ratio*100);
+    if(!prev || pct>prev.pct){ setBest({pct,score:r.score,total:done}); bestLine = prev ? `Новый рекорд для этой настройки (было ${prev.pct}%).` : 'Первый результат для этой настройки сохранён.'; }
+    else bestLine = `Рекорд для этой настройки: ${prev.pct}% (${prev.score}/${prev.total}).`;
+  }
+  const rows = r.history.map(h => {
+    const [name,cap,flag] = h.q;
+    const main = S.game==='capitals' ? `${esc(name)} — ${esc(cap)}` : esc(name);
+    const wrong = h.ok ? '' : `<small>Твой ответ: ${esc(h.shown)}</small>`;
+    return `<li><span class="fl">${flag}</span><span class="tx">${main}${wrong}</span><span class="mk ${h.ok?'ok':'no'}" aria-label="${h.ok?'верно':'неверно'}">${h.ok?'✓':'✕'}</span></li>`;
+  }).join('');
+  app.innerHTML = `
+    <div><div class="q-label">${aborted?'Игра остановлена':'Игра окончена'}</div>
+      <div class="score"><span class="n">${r.score}</span><span class="of">из ${done}${aborted?' отвеченных':''}</span></div>
+      <p class="lead">${grade} ${bestLine}</p></div>
+    <div class="btnrow" style="justify-content:flex-start">
+      <button class="btn" id="again" type="button">Ещё раз</button>
+      <button class="btn ghost" id="cont" type="button">Другая часть света</button>
+      <button class="btn ghost" id="menu" type="button">В начало</button>
+    </div>
+    <ul class="review">${rows}</ul>`;
+  $('#again').onclick = startGame;
+  $('#cont').onclick = () => { S.cont=null; S.len=null; route(); };
+  $('#menu').onclick = () => { S={game:null,mode:null,cont:null,len:null,run:null}; route(); };
+  window.scrollTo(0,0);
+}
+
+route();
+</script>
+</body></html>
